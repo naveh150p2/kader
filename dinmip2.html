@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<<script>
+    const API_URL = "https://script.googleapis.com/v1/scripts/AKfycbw6BTkoedhU4rfZf4QdRvB6W68k5BrGt5754u31-GzJPa53FvMsnwejVZbxtyBPhJRx:run";
+
+    // שליחת נתונים ל-Google Sheets
+    function saveDataToGoogleSheets(name, score) {
+        fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, score })
+        })
+        .then(response => response.text())
+        .then(data => console.log("תשובה מהשרת:", data))
+        .catch(error => console.error("שגיאה בשליחה:", error));
+    }
+
+    // טעינת נתונים מה-Google Sheets
+    function loadDataFromGoogleSheets() {
+        fetch(API_URL)
+            .then(response => response.json())
+            .then(data => {
+                console.log("נתונים מהשרת:", data);
+                updateTable(data);
+            })
+            .catch(error => console.error("שגיאה בטעינה:", error));
+    }
+
+    // עדכון הטבלה עם הנתונים מה-Google Sheets
+    function updateTable(data) {
+        let table = document.querySelector("table");
+        for (let i = 1; i < table.rows.length; i++) {
+            let row = table.rows[i];
+            let name = row.cells[0].textContent;
+            let match = data.find(item => item.name === name);
+            if (match) {
+                row.cells[1].textContent = match.score;
+            }
+        }
+    }
+
+    // טוען נתונים מהשרת כשהעמוד נטען
+    window.onload = function() {
+        loadDataFromGoogleSheets();
+    };
+
+    // עדכון הטבלה ושמירה בגוגל שיטס אחרי הוספת ניקוד
+    document.getElementById("addButton").onclick = function() {
+        addScore();
+        let selectedName = document.getElementById("nameButton").textContent;
+        let score = document.querySelector(`td:contains(${selectedName}) + td`).textContent;
+        saveDataToGoogleSheets(selectedName, score);
+    };
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>טבלה מסודרת</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            text-align: center;
+            direction: rtl;
+        }
+        .container {
+            width: 60%;
+            margin: 50px auto;
+        }
+        .inputs {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .select-box, .button-box {
+            padding: 10px;
+            border: 2px solid black;
+            text-align: center;
+            font-size: 16px;
+            width: 140px;
+            background-color: white;
+            cursor: pointer;
+            position: relative;
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background: white;
+            border: 2px solid black;
+            width: 100%;
+            top: 100%;
+            left: 0;
+            z-index: 1;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .dropdown-content div {
+            padding: 10px;
+            cursor: pointer;
+        }
+        .dropdown-content div:hover {
+            background-color: #ddd;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #ffffff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        th, td {
+            padding: 12px;
+            border: 2px solid black;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+    </style>
+    <script>
+        function toggleDropdown(id) {
+            var dropdown = document.getElementById(id);
+            dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+        }
+
+        function updateValue(buttonId, dropdownId, selectedValue) {
+            document.getElementById(buttonId).textContent = selectedValue;
+            document.getElementById(dropdownId).style.display = "none";
+            if (buttonId === "roleButton" && selectedValue === "מטבח") {
+                document.getElementById("difficultyBox").style.display = "block";
+            } else if (buttonId === "roleButton") {
+                document.getElementById("difficultyBox").style.display = "none";
+            }
+            calculatePoints();
+        }
+
+        function calculatePoints() {
+            var role = document.getElementById("roleButton").textContent;
+            var timeText = document.getElementById("timeButton").textContent;
+            var time = parseFloat(timeText);
+            var points = 0;
+            if (role === "מטבח" && !isNaN(time)) {
+                points = time * 1.5;
+            } else if ((role === "שמירה" || role === "בימוי אויב") && !isNaN(time)) {
+                points = time * 1;
+            }
+            document.getElementById("addButton").textContent = "הוסף (" + points + " נקודות)";
+        }
+
+        function addScore() {
+            var selectedName = document.getElementById("nameButton").textContent;
+            var rows = document.querySelectorAll("table tr");
+            rows.forEach(row => {
+                if (row.cells[0] && row.cells[0].textContent === selectedName) {
+                    var scoreCell = row.cells[1];
+                    var currentScore = parseFloat(scoreCell.textContent) || 0;
+                    var pointsText = document.getElementById("addButton").textContent;
+                    var points = parseFloat(pointsText.match(/\d+(\.\d+)?/)) || 0;
+                    scoreCell.textContent = (currentScore + points).toFixed(1);
+                }
+            });
+            saveDataToLocalStorage(); // שמירת הנתונים אחרי הוספת הניקוד
+        }
+
+        // שמירה של הנתונים ב-localStorage
+        function saveDataToLocalStorage() {
+            var rows = document.querySelectorAll("table tr");
+            var data = [];
+            rows.forEach(row => {
+                var name = row.cells[0] ? row.cells[0].textContent : null;
+                var score = row.cells[1] ? parseFloat(row.cells[1].textContent) : 0;
+                if (name) {
+                    data.push({ name: name, score: score });
+                }
+            });
+            localStorage.setItem("tableData", JSON.stringify(data));
+        }
+
+        // טעינת הנתונים מ-localStorage
+        function loadDataFromLocalStorage() {
+            var data = JSON.parse(localStorage.getItem("tableData"));
+            if (data) {
+                var rows = document.querySelectorAll("table tr");
+                data.forEach((item, index) => {
+                    if (index > 0 && rows[index]) {
+                        rows[index].cells[1].textContent = item.score;
+                    }
+                });
+            }
+        }
+
+        // קריאה בעת טעינת הדף
+        window.onload = function() {
+            loadDataFromLocalStorage();
+        };
+
+        // סגירת התפריטים כאשר לוחצים מחוץ להם
+        window.onclick = function(event) {
+            if (!event.target.matches('.select-box')) {
+                document.querySelectorAll('.dropdown-content').forEach(el => el.style.display = 'none');
+            }
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="inputs">
+            <div class="select-box" onclick="toggleDropdown('nameOptions')">
+                <span id="nameButton">שם</span>
+                <div id="nameOptions" class="dropdown-content">
+                    <div onclick="updateValue('nameButton', 'nameOptions', 'נוה')">נוה</div>
+                    <div onclick="updateValue('nameButton', 'nameOptions', 'דןדן')">דןדן</div>
+                </div>
+            </div>
+            <div class="select-box" onclick="toggleDropdown('roleOptions')">
+                <span id="roleButton">סוג קדר</span>
+                <div id="roleOptions" class="dropdown-content">
+                    <div onclick="updateValue('roleButton', 'roleOptions', 'מטבח')">מטבח</div>
+                    <div onclick="updateValue('roleButton', 'roleOptions', 'שמירה')">שמירה</div>
+                    <div onclick="updateValue('roleButton', 'roleOptions', 'בימוי אויב')">בימוי אויב</div>
+                </div>
+            </div>
+            <div class="select-box" id="difficultyBox" style="display: none;" onclick="toggleDropdown('difficultyOptions')">
+                <span id="difficultyButton">רמת קושי</span>
+                <div id="difficultyOptions" class="dropdown-content">
+                    <div onclick="updateValue('difficultyButton', 'difficultyOptions', '1')">1</div>
+                    <div onclick="updateValue('difficultyButton', 'difficultyOptions', '2')">2</div>
+                    <div onclick="updateValue('difficultyButton', 'difficultyOptions', '3')">3</div>
+                    <div onclick="updateValue('difficultyButton', 'difficultyOptions', '4')">4</div>
+                </div>
+            </div>
+            <div class="select-box" onclick="toggleDropdown('timeOptions')">
+                <span id="timeButton">שעות</span>
+                <div id="timeOptions" class="dropdown-content">
+                    <script>
+                        for (let i = 0.5; i <= 12; i += 0.5) {
+                            document.write(`<div onclick="updateValue('timeButton', 'timeOptions', '${i} שעות')">${i} שעות</div>`);
+                        }
+                    </script>
+                </div>
+            </div>
+            <div class="button-box" id="addButton" onclick="addScore()">הוסף</div>
+        </div>
+        <table>
+            <tr>
+                <th>שם</th>
+                <th>ניקוד</th>
+                <th>היסטוריה</th>
+            </tr>
+            <tr>
+                <td>נוה</td>
+                <td>0</td>
+                <td>...</td>
+            </tr>
+            <tr>
+                <td>דןדן</td>
+                <td>0</td>
+                <td>...</td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>
